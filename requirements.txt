@@ -1,0 +1,8 @@
+Flask
+mysql-connector-python
+cryptography
+werkzeug
+gunicorn
+lbry-libtorrent
+groq
+requests

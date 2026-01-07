@@ -1,0 +1,2409 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dolly | Rede Descentralizada</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        /* --- VARIÁVEIS & RESET --- */
+        :root {
+            --bg: #0a0a0c;
+            --surface: #16161a;
+            --surface-hover: #1f1f25;
+            --primary: #7f5af0;
+            --primary-glow: rgba(127, 90, 240, 0.4);
+            --text: #fffffe;
+            --text-dim: #94a1b2;
+            --success: #2cb67d;
+            --error: #ef4565;
+            --ease: cubic-bezier(0.23, 1, 0.32, 1);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Space Grotesk', sans-serif; outline: none; }
+        
+        body { 
+            background-color: var(--bg); 
+            color: var(--text); 
+            min-height: 100vh; 
+            display: flex; 
+            flex-direction: column; 
+            overflow-x: hidden;
+        }
+
+        /* --- ANIMAÇÕES --- */
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); filter: blur(10px); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
+        @keyframes scaleIn { from { opacity: 0; transform: scale(0.95); filter: blur(5px); } to { opacity: 1; transform: scale(1); filter: blur(0); } }
+        @keyframes float { 0% { transform: translateY(0px); } 50% { transform: translateY(-5px); } 100% { transform: translateY(0px); } }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes shake { 
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            25% { transform: translate(-2px, 2px) rotate(-1deg); }
+            50% { transform: translate(2px, -2px) rotate(1deg); }
+            75% { transform: translate(-2px, -2px) rotate(-1deg); }
+        }
+        @keyframes bounceUpDown { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-60px); } }
+
+        /* --- CONSTRUCT ANIMATIONS --- */
+        @keyframes constructHeader {
+            0% { transform: translateY(-80px); opacity: 0; letter-spacing: 15px; filter: blur(20px); }
+            60% { opacity: 0.8; letter-spacing: 2px; }
+            100% { transform: translateY(0); opacity: 1; letter-spacing: normal; filter: blur(0); }
+        }
+        @keyframes constructBox {
+            0% { transform: perspective(1000px) rotateX(30deg) scale(0.8) translateY(100px); opacity: 0; filter: blur(20px); border-color: var(--primary); }
+            100% { transform: perspective(1000px) rotateX(0deg) scale(1) translateY(0); opacity: 1; filter: blur(0); border-color: rgba(255,255,255,0.05); }
+        }
+        @keyframes constructInput {
+            0% { transform: translateX(-30px); opacity: 0; clip-path: inset(0 100% 0 0); }
+            100% { transform: translateX(0); opacity: 1; clip-path: inset(0 0 0 0); }
+        }
+        @keyframes constructFade { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- COMPONENTES GERAIS --- */
+        .container { max-width: 1000px; margin: 0 auto; padding: 20px; width: 100%; flex: 1; display: flex; flex-direction: column; }
+        
+        header { 
+            display: flex; justify-content: space-between; align-items: center; padding: 30px 0; 
+            opacity: 0; /* Hidden initially for intro */
+        }
+        
+        .logo { font-size: 1.8rem; font-weight: 700; letter-spacing: -1px; color: var(--text); display: flex; align-items: center; gap: 15px; }
+        
+        .brand-symbol {
+            filter: drop-shadow(0 0 10px var(--primary-glow));
+            animation: float 6s ease-in-out infinite;
+        }
+
+        button {
+            cursor: pointer; border: none; transition: all 0.3s var(--ease); font-weight: 600;
+        }
+        
+        .btn-primary {
+            background: var(--primary); color: #fff; padding: 12px 24px; border-radius: 12px;
+            box-shadow: 0 4px 15px var(--primary-glow);
+        }
+        .btn-primary:hover { transform: translateY(-3px) scale(1.02); box-shadow: 0 10px 30px var(--primary-glow); }
+        .btn-primary:active { transform: scale(0.98); }
+
+        .btn-ghost { background: transparent; color: var(--text-dim); padding: 8px 16px; }
+        .btn-ghost:hover { color: var(--text); }
+
+        input {
+            width: 100%; padding: 15px; background: var(--surface); border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 12px; color: var(--text); transition: 0.3s; margin-bottom: 15px;
+        }
+        input:focus { border-color: var(--primary); box-shadow: 0 0 0 4px var(--primary-glow); }
+
+        /* --- AUTH SCREEN --- */
+        .auth-wrapper {
+            flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            /* Animation handled by JS class */
+        }
+        .auth-box {
+            background: var(--surface); padding: 40px; border-radius: 24px; width: 100%; max-width: 400px;
+            border: 1px solid rgba(255,255,255,0.05); box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        }
+        .auth-title { font-size: 2rem; margin-bottom: 30px; text-align: center; }
+        .switch-auth { text-align: center; margin-top: 20px; color: var(--text-dim); font-size: 0.9rem; cursor: pointer; }
+        .switch-auth:hover { color: var(--primary); text-decoration: underline; }
+
+        /* --- DASHBOARD --- */
+        .dashboard { display: none; animation: fadeIn 0.8s var(--ease); width: 100%; }
+        
+        .grid-actions {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 40px;
+        }
+        
+        .card {
+            background: var(--surface); padding: 30px; border-radius: 20px; cursor: pointer;
+            border: 1px solid rgba(255,255,255,0.03); transition: 0.4s var(--ease);
+            display: flex; flex-direction: column; align-items: center; text-align: center; gap: 15px;
+            animation: fadeIn 0.8s var(--ease) backwards;
+        }
+        .card:nth-child(1) { animation-delay: 0.1s; }
+        .card:nth-child(2) { animation-delay: 0.2s; }
+        .card:nth-child(3) { animation-delay: 0.3s; }
+        .card:hover { transform: translateY(-10px) scale(1.02); border-color: var(--primary); background: var(--surface-hover); box-shadow: 0 15px 40px -10px rgba(0,0,0,0.5); }
+        .card-icon { font-size: 2.5rem; margin-bottom: 10px; animation: float 3s infinite ease-in-out; }
+        .card h3 { font-size: 1.2rem; }
+        .card p { color: var(--text-dim); font-size: 0.9rem; }
+
+        /* --- FILE LIST --- */
+        .section-title { margin-bottom: 20px; font-size: 1.5rem; display: flex; align-items: center; gap: 10px; }
+        .file-list { display: flex; flex-direction: column; gap: 12px; }
+        
+        .file-item {
+            background: var(--surface); padding: 20px; border-radius: 16px; display: flex; justify-content: space-between;
+            align-items: center; transition: 0.3s; border: 1px solid transparent;
+            animation: fadeIn 0.5s var(--ease) backwards;
+        }
+        .file-item:hover { background: var(--surface-hover); transform: translateX(5px); border-color: rgba(255,255,255,0.1); }
+        .file-info { display: flex; flex-direction: column; gap: 5px; }
+        .file-name { font-weight: 600; }
+        .file-meta { font-size: 0.8rem; color: var(--text-dim); font-family: monospace; }
+        
+        .delete-btn {
+            background: rgba(239, 69, 101, 0.1); color: var(--error); padding: 8px 12px; border-radius: 8px;
+        }
+        .delete-btn:hover { background: var(--error); color: #fff; }
+        
+        /* --- TAGS DE IA --- */
+        .ai-tag {
+            font-size: 0.7rem; padding: 4px 8px; border-radius: 4px; font-weight: bold; text-transform: uppercase; margin-left: 10px; display: inline-block;
+        }
+        .tag-admin { background: linear-gradient(45deg, #ffd700, #ffaa00); color: #000; box-shadow: 0 0 10px rgba(255, 215, 0, 0.5); }
+        .tag-trusted { background: rgba(44, 182, 125, 0.2); color: var(--success); border: 1px solid var(--success); }
+        .tag-virus { background: rgba(239, 69, 101, 0.2); color: var(--error); border: 1px solid var(--error); animation: shake 0.5s infinite; }
+        .tag-sus { background: rgba(255, 165, 0, 0.2); color: orange; border: 1px solid orange; }
+
+        /* --- VIP BADGE --- */
+        .vip-logo {
+            display: inline-flex; align-items: center; justify-content: center;
+            margin-left: 8px; vertical-align: middle; gap: 2px;
+            animation: float 3s ease-in-out infinite;
+        }
+        .vip-logo svg { width: 24px; height: 24px; fill: url(#vip-gradient-def); filter: drop-shadow(0 0 5px rgba(127, 90, 240, 0.5)); }
+        
+        .vip-text { 
+            background: linear-gradient(90deg, #7f5af0, #2cb67d); 
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            font-weight: 900; font-size: 0.8rem; letter-spacing: 1px; 
+        }
+
+        /* --- MODALS --- */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(8px); z-index: 100; display: none; justify-content: center; align-items: center;
+            opacity: 0; transition: opacity 0.3s;
+        }
+        .modal-overlay.active { display: flex; opacity: 1; }
+        
+        .modal-content {
+            background: var(--surface); padding: 40px; border-radius: 24px; width: 90%; max-width: 500px;
+            position: relative; border: 1px solid rgba(255,255,255,0.1); transform: scale(0.9); transition: transform 0.3s var(--ease);
+        }
+        .modal-overlay.active .modal-content { transform: scale(1); }
+        
+        .close-modal { position: absolute; top: 20px; right: 20px; font-size: 1.5rem; color: var(--text-dim); background: none; }
+        
+        .drop-zone {
+            border: 2px dashed var(--text-dim); border-radius: 16px; padding: 40px; text-align: center;
+            margin: 20px 0; transition: 0.3s; cursor: pointer;
+        }
+        .drop-zone:hover, .drop-zone.dragover { border-color: var(--primary); background: rgba(127, 90, 240, 0.05); }
+
+        /* --- TOAST & LOADER --- */
+        .toast {
+            position: fixed; bottom: 30px; right: 30px; background: var(--surface); padding: 15px 25px;
+            border-radius: 12px; border-left: 4px solid var(--primary); box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            transform: translateY(100px); transition: transform 0.4s var(--ease); z-index: 10001; font-weight: 600;
+        }
+        .toast.show { transform: translateY(0); }
+        .toast.error { border-left-color: var(--error); }
+
+        .loader {
+            width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff;
+            border-radius: 50%; animation: spin 1s linear infinite; display: none; margin-left: 10px;
+        }
+        .btn-primary .loader { display: inline-block; vertical-align: middle; }
+
+        /* --- INTRO LOADER --- */
+        #intro-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #ffffff; z-index: 9999;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            transition: opacity 0.8s var(--ease), background-color 0.3s var(--ease);
+        }
+
+        
+        .shake-effect {
+            animation: shake 0.1s linear infinite;
+        }
+
+        /* Animação de Entrada (Pop) */
+        @keyframes popIn {
+            0% { transform: scale(0); opacity: 0; }
+            60% { transform: scale(1.2); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .loader-shape {
+            width: 60px; height: 60px;
+            /* Animação composta: Entrada Pop + Morfologia Contínua */
+            animation: popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) backwards, shapeMorph 4s infinite ease-in-out 0.6s;
+            transition: all 1.2s var(--ease);
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 50%; /* Garante forma circular base */
+        }
+        
+        .loader-shape svg {
+            filter: drop-shadow(0 0 15px var(--primary-glow));
+            width: 100%; height: 100%;
+            transition: all 0.5s ease-out; /* Transição para desintegração */
+        }
+
+        @keyframes shapeMorph {
+            0% { transform: translateY(0) rotate(0deg) scale(1); }
+            50% { transform: translateY(-20px) rotate(180deg) scale(1.1); }
+            100% { transform: translateY(0) rotate(360deg) scale(1); }
+        }
+
+        /* Estado final: A forma explode/dissolve para formar o título */
+        .forming-title .loader-shape:not(#survivor-shape) {
+            animation: none;
+            transform: scale(15) rotate(45deg); /* Expande e gira para preencher/sumir */
+            opacity: 0;
+            filter: blur(20px); /* Efeito de dissolução */
+        }
+
+        /* Survivor Shape Logic */
+        .forming-title #survivor-shape {
+            animation: none;
+            opacity: 1;
+            filter: blur(0);
+            position: absolute;
+            z-index: 20;
+            transition: all 0.6s var(--ease);
+            /* Mantém a forma inicial antes de transformar */
+            left: 50%; top: 50%; transform: translate(-50%, -50%);
+        }
+
+        /* Estado onde ele se move e vira o log */
+        .forming-title.move-survivor #survivor-shape {
+            top: 50%; /* Alinhado ao meio verticalmente */
+            left: calc(50% + 240px); /* Vai para o LADO do título (Direita) */
+            width: 260px;
+            height: auto;
+            min-height: 140px;
+            border-radius: 16px;
+            background: rgba(22, 22, 26, 0.9);
+            border: 1px solid rgba(127, 90, 240, 0.3);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transform: translate(0, -50%); /* Centraliza verticalmente apenas */
+        }
+
+        .forming-title #intro-end {
+            display: block;
+        }
+
+        #intro-end { 
+            display: none; text-align: center; 
+            /* O título surge do "blur" deixado pela forma */
+            animation: titleReveal 1.5s var(--ease) forwards; 
+        }
+
+        @keyframes titleReveal {
+            0% { opacity: 0; letter-spacing: 15px; filter: blur(15px); transform: scale(0.9); }
+            100% { opacity: 1; letter-spacing: 4px; filter: blur(0); transform: scale(1); }
+        }
+
+        .store-title { 
+            font-size: 3rem; font-weight: 700; margin-bottom: 30px; position: relative;
+            letter-spacing: 4px; color: var(--text); text-shadow: 0 0 30px var(--primary-glow);
+        }
+        
+        /* --- SITE ENTERED STATE --- */
+        body.site-entered header {
+            animation: constructHeader 1.8s cubic-bezier(0.19, 1, 0.22, 1) forwards;
+        }
+        body.site-entered .auth-box {
+            animation: constructBox 1.5s cubic-bezier(0.19, 1, 0.22, 1) 0.4s backwards;
+        }
+        /* Sequência de construção interna */
+        body.site-entered .auth-box input:nth-of-type(1) {
+            animation: constructInput 1s var(--ease) 1.0s backwards;
+        }
+        body.site-entered .auth-box input:nth-of-type(2) {
+            animation: constructInput 1s var(--ease) 1.2s backwards;
+        }
+        body.site-entered .auth-box button {
+            animation: constructFade 1s var(--ease) 1.4s backwards;
+        }
+        body.site-entered .switch-auth,
+        body.site-entered .btn-ghost {
+            animation: constructFade 1s var(--ease) 1.6s backwards;
+        }
+
+        /* Flash Effect */
+        #flash-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #fff;
+            z-index: 10000; pointer-events: none; opacity: 0; transition: opacity 0.6s ease-out;
+        }
+
+        /* --- TERMS SCREEN --- */
+        #terms-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #0a0a0c; z-index: 10005;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            padding: 20px; text-align: center;
+            transition: opacity 0.5s var(--ease);
+        }
+        .terms-content { max-width: 800px; animation: scaleIn 0.8s var(--ease); }
+        .terms-content h1 { font-size: 4rem; margin-bottom: 30px; color: var(--primary); letter-spacing: -2px; font-weight: 700; text-transform: uppercase; }
+        .terms-content p { font-size: 1.2rem; color: var(--text-dim); margin-bottom: 50px; line-height: 1.8; }
+
+        /* Red Alert Flash */
+        @keyframes redFlash {
+            0% { opacity: 0; }
+            10% { opacity: 0.8; background: rgba(239, 69, 101, 0.5); }
+            100% { opacity: 0; }
+        }
+        .access-denied-flash {
+            animation: redFlash 0.5s ease-out;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 20000; pointer-events: none;
+        }
+
+        /* --- SUPPORT WIDGET --- */
+        #support-widget {
+            position: fixed; bottom: 30px; left: 30px; z-index: 10002;
+            font-family: 'Space Grotesk', sans-serif;
+        }
+        
+        #support-btn {
+            width: 60px; height: 60px; border-radius: 50%;
+            background: var(--primary); color: #fff; font-size: 1.8rem;
+            box-shadow: 0 10px 30px var(--primary-glow);
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.3s var(--ease);
+            animation: float 6s ease-in-out infinite;
+        }
+        #support-btn:hover { transform: scale(1.1) rotate(10deg); }
+        
+        #support-window {
+            position: absolute; bottom: 80px; left: 0;
+            width: 320px; height: 450px;
+            background: rgba(22, 22, 26, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            display: flex; flex-direction: column;
+            overflow: hidden;
+            transform-origin: bottom left;
+            transform: scale(0); opacity: 0;
+            transition: all 0.4s var(--ease);
+        }
+        #support-window.active { transform: scale(1); opacity: 1; }
+        
+        .support-header {
+            padding: 20px; background: rgba(127, 90, 240, 0.1);
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            display: flex; justify-content: space-between; align-items: center;
+            font-weight: 700; color: var(--primary);
+        }
+        
+        #chat-messages {
+            flex: 1; padding: 20px; overflow-y: auto;
+            display: flex; flex-direction: column; gap: 15px;
+        }
+        
+        .message {
+            padding: 12px 16px; border-radius: 12px; font-size: 0.9rem;
+            max-width: 85%; line-height: 1.5;
+            animation: fadeIn 0.3s var(--ease);
+        }
+        .message.bot {
+            background: rgba(255,255,255,0.05); color: var(--text);
+            align-self: flex-start; border-bottom-left-radius: 2px;
+        }
+        .message.user {
+            background: var(--primary); color: #fff;
+            align-self: flex-end; border-bottom-right-radius: 2px;
+        }
+        
+        .support-input {
+            padding: 15px; border-top: 1px solid rgba(255,255,255,0.05);
+            display: flex; gap: 10px;
+        }
+        .support-input input {
+            margin: 0; padding: 10px; font-size: 0.9rem; background: rgba(0,0,0,0.2);
+        }
+        .support-input button {
+            background: var(--primary); color: #fff; width: 40px; border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        /* --- KICK SCREEN --- */
+        #kick-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; z-index: 20000; display: none;
+            flex-direction: column; justify-content: center; align-items: center;
+            color: #fff; text-align: center;
+        }
+        .kick-numbers { display: flex; gap: 40px; font-size: 10rem; font-weight: bold; margin-bottom: 40px; }
+        .num-6 { color: var(--error); animation: bounceUpDown 1s ease-in-out infinite; }
+        .num-7 { color: var(--primary); animation: bounceUpDown 1s ease-in-out infinite 0.5s; } /* Delay para alternar */
+        .kick-timer {
+            font-size: 2rem; font-family: monospace; border: 1px solid rgba(255,255,255,0.2);
+            padding: 10px 30px; border-radius: 10px; background: rgba(255,255,255,0.05);
+        }
+
+        /* --- SALA VIP --- */
+        .vip-room-container {
+            display: flex; flex-direction: column; height: 60vh;
+        }
+        .vip-chat-area {
+            flex: 1; background: rgba(0,0,0,0.3); border-radius: 12px; padding: 20px;
+            overflow-y: auto; margin-bottom: 15px; border: 1px solid rgba(127, 90, 240, 0.2);
+        }
+        .vip-msg { margin-bottom: 10px; font-size: 0.9rem; }
+        .vip-msg strong { background: linear-gradient(90deg, #7f5af0, #2cb67d); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-right: 5px; }
+        .vip-msg span { color: #fff; }
+        .vip-input-area { display: flex; gap: 10px; }
+        .vip-input-area input { margin-bottom: 0; border-color: rgba(127, 90, 240, 0.3); }
+        .vip-input-area button { background: linear-gradient(90deg, #7f5af0, #2cb67d); color: #fff; border: none; }
+        .vip-input-area button:hover { background: #fff; }
+
+        /* --- BAN SCREEN --- */
+        .ban-container {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: #000; color: #ff0000; font-family: 'Courier New', Courier, monospace;
+            display: none; justify-content: center; align-items: center; text-align: center;
+            z-index: 20001; flex-direction: column;
+        }
+        .ban-h1 {
+            font-size: 6rem; text-transform: uppercase; margin: 0;
+            animation: glitch 0.2s infinite; text-shadow: 4px 4px 0px #fff;
+        }
+        .ban-h2 {
+            font-size: 2rem; letter-spacing: 10px; border-top: 2px solid red; border-bottom: 2px solid red;
+            padding: 10px; background: rgba(255, 0, 0, 0.1);
+        }
+        .ban-p { font-size: 1.2rem; color: #fff; margin-top: 20px; }
+        .ban-icon { font-size: 10rem; display: block; animation: pulse 0.8s infinite alternate; }
+        @keyframes glitch {
+            0% { transform: translate(0); } 20% { transform: translate(-5px, 5px); }
+            40% { transform: translate(-5px, -5px); } 60% { transform: translate(5px, 5px); }
+            80% { transform: translate(5px, -5px); } 100% { transform: translate(0); }
+        }
+        @keyframes pulse {
+            from { transform: scale(1); opacity: 1; } to { transform: scale(1.1); opacity: 0.8; text-shadow: 0 0 30px red; }
+        }
+        .scanlines {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.5) 50%, rgba(0,0,0,0.5));
+            background-size: 100% 4px; pointer-events: none; z-index: 5;
+        }
+
+        /* --- VIP CELEBRATION ANIMATION --- */
+        #vip-celebration {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; z-index: 20002; display: none;
+            justify-content: center; align-items: center;
+            flex-direction: column; overflow: hidden;
+        }
+
+        /* 1. BOLA */
+        .vip-ball {
+            width: 20px; height: 20px; background: #fff; border-radius: 50%;
+            box-shadow: 0 0 20px #fff, 0 0 40px var(--primary);
+            position: absolute; opacity: 0;
+        }
+        .vip-ball.active {
+            animation: ballSequence 2s ease-in-out forwards;
+        }
+        @keyframes ballSequence {
+            0% { transform: scale(0); opacity: 0; }
+            20% { transform: scale(1); opacity: 1; }
+            80% { transform: scale(1.5); border-radius: 50%; }
+            100% { transform: scaleY(2) scaleX(0.1); opacity: 0; border-radius: 0; } /* Vira um traço e some */
+        }
+
+        /* 2. TEXTO VIP */
+        .vip-text-container {
+            display: flex; gap: 15px; font-size: 8rem; font-weight: 900; z-index: 10;
+            position: relative;
+        }
+        .vip-letter { opacity: 0; color: #fff; position: relative; }
+        
+        /* V: Surge da bola */
+        .vip-letter.v-show { animation: vReveal 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        @keyframes vReveal { 0% { transform: scale(0.5); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+
+        /* I: Efeito de Corte */
+        .vip-cut-line {
+            position: absolute; top: -20%; left: 50%; width: 4px; height: 140%;
+            background: #fff; box-shadow: 0 0 20px #fff;
+            transform: rotate(20deg) scaleY(0); transform-origin: top;
+            z-index: 20; opacity: 0;
+        }
+        .vip-cut-line.active { animation: cutSlash 0.4s ease-out forwards; }
+        @keyframes cutSlash { 
+            0% { transform: rotate(20deg) scaleY(0); opacity: 1; } 
+            50% { transform: rotate(20deg) scaleY(1); opacity: 1; } 
+            100% { transform: rotate(20deg) scaleY(1); opacity: 0; } 
+        }
+        .vip-letter.i-show { animation: iReveal 0.1s linear forwards 0.2s; } /* Aparece no meio do corte */
+        @keyframes iReveal { from { opacity: 0; filter: blur(10px); } to { opacity: 1; filter: blur(0); } }
+
+        /* P: Explosão */
+        .vip-explosion {
+            position: absolute; top: 50%; left: 50%; width: 10px; height: 10px;
+            background: transparent; border-radius: 50%; z-index: 15; pointer-events: none;
+        }
+        .vip-explosion.active { animation: explodeP 0.8s ease-out forwards; }
+        @keyframes explodeP {
+            0% { box-shadow: 0 0 0 0 rgba(255,255,255,0.8); }
+            100% { box-shadow: 0 0 0 150vmax rgba(255,255,255,0); }
+        }
+        .vip-letter.p-show { animation: pReveal 0.6s ease-out forwards; }
+        @keyframes pReveal { 0% { transform: scale(3); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+
+        /* GLOW FINAL */
+        .vip-text-container.final-glow .vip-letter {
+            background: linear-gradient(90deg, #7f5af0, #2cb67d);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 40px rgba(127, 90, 240, 0.6);
+            transition: 1s;
+        }
+
+        /* VIP Comparison Table */
+        .vip-comparison { display: flex; gap: 10px; margin-bottom: 20px; text-align: center; }
+        .comp-col { flex: 1; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; font-size: 0.9rem; display: flex; flex-direction: column; gap: 5px; }
+        .comp-col.vip { border: 1px solid var(--success); background: rgba(44, 182, 125, 0.1); transform: scale(1.05); box-shadow: 0 0 20px rgba(44, 182, 125, 0.2); }
+        .comp-col h3 { margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; font-weight: bold; }
+        .comp-price { font-size: 2.5rem; font-weight: 900; margin: 20px 0; color: var(--success); text-shadow: 0 0 10px rgba(44, 182, 125, 0.5); }
+
+        /* Benefits List Animation (Constructive) */
+        .vip-benefits {
+            margin-top: 40px; display: flex; flex-direction: column; gap: 15px; align-items: center;
+            perspective: 1000px; /* Para efeito 3D */
+        }
+        
+        .benefit-item-construct {
+            font-size: 1.5rem; color: #fff; font-weight: 600; letter-spacing: 1px;
+            opacity: 0; transform-origin: bottom;
+        }
+        .benefit-item-construct.show { animation: constructBlock 0.8s cubic-bezier(0.19, 1, 0.22, 1) forwards; }
+        
+        @keyframes constructBlock {
+            0% { transform: rotateX(-90deg) translateY(20px); opacity: 0; }
+            100% { transform: rotateX(0deg) translateY(0); opacity: 1; }
+        }
+
+        /* --- WOW COMMUNITY --- */
+        .wow-badge {
+            display: inline-flex; align-items: center; justify-content: center;
+            background: linear-gradient(45deg, #f8b700, #ff7700);
+            color: #000; font-weight: bold; font-size: 0.7rem; padding: 2px 6px;
+            border-radius: 4px; margin-left: 5px; cursor: pointer;
+            box-shadow: 0 0 10px rgba(255, 165, 0, 0.4);
+            text-transform: uppercase; letter-spacing: 1px;
+        }
+        .wow-badge:hover { transform: scale(1.1); }
+
+        /* Background Effect */
+        .vip-bg-effect {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: -1;
+            background: radial-gradient(circle at center, rgba(127, 90, 240, 0.15) 0%, rgba(0,0,0,1) 70%);
+            animation: pulseBg 4s infinite alternate;
+        }
+        @keyframes pulseBg {
+            0% { opacity: 0.5; transform: scale(1); }
+            100% { opacity: 1; transform: scale(1.1); }
+        }
+
+    </style>
+</head>
+<body>
+    <!-- TELA DE TERMOS -->
+    <div id="terms-screen">
+        <div class="terms-content">
+            <h1>Termos de Uso</h1>
+            <p>Este sistema opera como uma rede descentralizada de compartilhamento de arquivos. 
+            Todo o conteúdo hospedado ou compartilhado é de responsabilidade exclusiva dos usuários. 
+            Ao acessar o <strong>DOLLY TRT</strong>, você concorda em não utilizar a plataforma para fins ilícitos 
+            e reconhece que os administradores não possuem controle sobre os dados trafegados via Magnet Links.</p>
+            <button class="btn-primary" onclick="acceptTerms()" style="font-size: 1.1rem; padding: 15px 40px;">LI E CONCORDO</button>
+        </div>
+    </div>
+
+    <!-- TELA DE KICK TEMPORÁRIO -->
+    <div id="kick-screen">
+        <div class="kick-numbers">
+            <div class="num-6">6</div>
+            <div class="num-7">7</div>
+        </div>
+        <h2 style="margin-bottom: 20px;">VOCÊ ESTÁ DE CASTIGO</h2>
+        <p style="color: var(--text-dim); margin-bottom: 20px;">Aguarde o tempo acabar para retornar.</p>
+        <div class="kick-timer" id="kick-timer-display">00:00</div>
+    </div>
+
+    <!-- TELA DE BANIMENTO -->
+    <div id="ban-screen" class="ban-container">
+        <div class="scanlines"></div>
+        <div style="position: relative; z-index: 10;">
+            <span class="ban-icon">☠️</span>
+            <h1 class="ban-h1">USUÁRIO BANIDO</h1>
+            <h2 class="ban-h2">SYSTEM LOCKDOWN</h2>
+            <p class="ban-p">VIOLAÇÃO CRÍTICA DETECTADA. SUA CONTA FOI ENCERRADA.</p>
+            <p class="ban-p">DESCONECTANDO...</p>
+        </div>
+    </div>
+
+    <!-- TELA DE CELEBRAÇÃO VIP -->
+    <div id="vip-celebration">
+        <div class="vip-bg-effect"></div>
+        
+        <div id="vip-ball" class="vip-ball"></div>
+        <div id="vip-cut" class="vip-cut-line"></div>
+        <div id="vip-explosion" class="vip-explosion"></div>
+
+        <div class="vip-text-container" id="vip-text-container">
+            <span id="vip-v" class="vip-letter">V</span>
+            <span id="vip-i" class="vip-letter">I</span>
+            <span id="vip-p" class="vip-letter">P</span>
+        </div>
+
+        <div class="vip-benefits" id="vip-benefits-list">
+            <div class="benefit-item-construct">💎 Chat Global Exclusivo</div>
+            <div class="benefit-item-construct">🚀 Upload de 1GB</div>
+            <div class="benefit-item-construct">🛡️ Status Confiável</div>
+            <div class="benefit-item-construct">✨ Insígnia Elite</div>
+        </div>
+    </div>
+
+    <!-- SVG Gradient Definition for Icons -->
+    <svg style="width:0;height:0;position:absolute;" aria-hidden="true" focusable="false">
+        <linearGradient id="vip-gradient-def" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" style="stop-color:#7f5af0;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#2cb67d;stop-opacity:1" />
+        </linearGradient>
+    </svg>
+
+    <!-- SUPPORT WIDGET -->
+    <div id="support-widget">
+        <button id="support-btn" onclick="toggleSupport()">🤖</button>
+        <div id="support-window">
+            <div class="support-header">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <span>IA de Controle</span>
+                    <button onclick="toggleTicketList()" class="btn-ghost" style="padding:2px 8px; font-size:0.7rem; border:1px solid rgba(255,255,255,0.2); height:auto;">TICKETS</button>
+                </div>
+                <button onclick="toggleSupport()" style="background:none; border:none; color:white; font-size:1.2rem;">&times;</button>
+            </div>
+            <div id="chat-messages">
+                <div class="message bot">Olá. Sou a IA do sistema. Tenho controle total e estou operando com cautela. Como posso ajudar?</div>
+            </div>
+            <div class="support-input">
+                <input type="text" id="chat-input" placeholder="Digite seu comando..." onkeypress="handleChatKey(event)">
+                <button onclick="sendChatMessage()">➤</button>
+            </div>
+            <div id="ticket-list-view" style="display:none; flex:1; overflow-y:auto; padding:10px; background:rgba(0,0,0,0.2);"></div>
+        </div>
+    </div>
+
+    <!-- TELA DE LOADING / INTRO -->
+    <div id="intro-screen">
+        <div id="shapes-container" style="display: flex; gap: 20px; align-items: center;"></div>
+        <div id="intro-end">
+            <div class="store-title">[DOLLY TRT]</div>
+            <button class="btn-primary" onclick="enterSite()" style="font-size: 1.2rem; padding: 15px 40px; margin-top: 10px;">ENTRAR</button>
+        </div>
+    </div>
+    
+    <div id="flash-overlay"></div>
+
+    <div class="container">
+        <header>
+            <div class="logo">
+                <svg class="brand-symbol" width="42" height="42" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M20 2L4.4 11V29L20 38L35.6 29V11L20 2Z" fill="rgba(127, 90, 240, 0.15)" stroke="#7f5af0" stroke-width="2" stroke-linejoin="round"/>
+                    <path d="M22 10L13 21H21L17 31" stroke="#fffffe" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                Dolly
+            </div>
+            <div id="user-nav" style="display: none;">
+                <span id="username-display" style="margin-right: 15px; color: var(--text-dim);"></span>
+                <button onclick="logout()" class="btn-ghost">Sair</button>
+            </div>
+        </header>
+
+        <!-- LOGIN / REGISTER -->
+        <div id="auth-section" class="auth-wrapper">
+            <div class="auth-box" id="login-box">
+                <h2 class="auth-title">Bem-vindo</h2>
+                <form onsubmit="handleLogin(event)">
+                    <input type="text" id="login-user" placeholder="Usuário" required>
+                    <input type="password" id="login-pass" placeholder="Senha" required>
+                    <button type="submit" class="btn-primary" style="width: 100%">Entrar <div class="loader"></div></button>
+                </form>
+                <div class="switch-auth" onclick="toggleAuth('register')">Não tem conta? Crie agora</div>
+            </div>
+
+            <div class="auth-box" id="register-box" style="display: none;">
+                <h2 class="auth-title">Criar Conta</h2>
+                <form onsubmit="handleRegister(event)">
+                    <input type="text" id="reg-user" placeholder="Usuário" required>
+                    <input type="password" id="reg-pass" placeholder="Senha" required>
+                    <button type="submit" class="btn-primary" style="width: 100%">Registrar <div class="loader"></div></button>
+                </form>
+                <div class="switch-auth" onclick="toggleAuth('login')">Já tem conta? Faça login</div>
+            </div>
+
+            <div style="margin-top: 30px; text-align: center; animation: fadeIn 1s var(--ease);">
+                <button class="btn-ghost" onclick="openModal('dolly-modal')" style="border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 12px 24px;">
+                    📜 Importar arquivo .dolly (Sem Login)
+                </button>
+            </div>
+        </div>
+
+        <!-- DASHBOARD -->
+        <div id="dashboard-section" class="dashboard">
+            <!-- QUOTA DISPLAY -->
+            <div id="quota-container" style="margin-bottom: 30px; background: var(--surface); padding: 20px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05);">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 10px; align-items: center;">
+                    <span style="color: var(--text-dim); font-size: 0.9rem;">Armazenamento (<span id="quota-limit-label">500MB</span>)</span>
+                    <span id="quota-percent" style="font-weight: bold; color: var(--primary);">0%</span>
+                </div>
+                <div style="width: 100%; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden;">
+                    <div id="quota-bar" style="width: 0%; height: 100%; background: var(--primary); transition: width 0.5s ease;"></div>
+                </div>
+                <div style="text-align: right; font-size: 0.8rem; color: var(--text-dim); margin-top: 5px;" id="quota-details">0 MB usados</div>
+            </div>
+
+            <div class="grid-actions">
+                <div class="card" id="card-upload" onclick="openModal('upload-modal')">
+                    <div class="card-icon">☁️</div>
+                    <h3>Upload</h3>
+                    <p>Guarde seus arquivos</p>
+                </div>
+                <div class="card" id="card-torrent" onclick="openModal('torrent-modal')">
+                    <div class="card-icon">🧲</div>
+                    <h3>Torrent</h3>
+                    <p>Baixar via Magnet</p>
+                </div>
+                <div class="card" onclick="openModal('dolly-modal')">
+                    <div class="card-icon">📜</div>
+                    <h3>Ler .dolly</h3>
+                    <p>Importar metadados</p>
+                </div>
+                <div class="card" onclick="openDollyStore()">
+                    <div class="card-icon">🌐</div>
+                    <h3>Dolly Store</h3>
+                    <p>Explorar Rede</p>
+                </div>
+                <div class="card" id="card-vip" onclick="openVipRoom()">
+                    <div class="card-icon" style="filter: drop-shadow(0 0 10px #7f5af0);">👑</div>
+                    <h3 style="background: linear-gradient(90deg, #7f5af0, #2cb67d); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Sala VIP</h3>
+                    <p>Chat Elite & Exclusivos</p>
+                </div>
+                <div class="card" onclick="toggleSupport()">
+                    <div class="card-icon">🤖</div>
+                    <h3>Suporte</h3>
+                    <p>Ajuda & Tickets</p>
+                </div>
+                <div class="card" onclick="checkWoWStatus()">
+                    <div class="card-icon" style="filter: drop-shadow(0 0 5px #f8b700);">⚔️</div>
+                    <h3 style="color: #f8b700;">Comunidade WoW</h3>
+                    <p>Horda & Aliança</p>
+                </div>
+            </div>
+
+            <!-- ADMIN PANEL (Injetado via JS se for admin) -->
+            <div id="admin-section" style="display:none; margin-bottom: 40px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 20px;">
+                <div class="section-title">🛡️ Painel Admin - Pendentes</div>
+                <div id="pending-list" class="file-list"></div>
+
+                <div style="margin-top: 30px;">
+                    <div class="section-title">👥 Gestão de Usuários</div>
+                    <div id="all-users-list" class="file-list" style="max-height: 300px; overflow-y: auto;"></div>
+                </div>
+
+                <div style="margin-top: 30px;">
+                    <div class="section-title" style="color: #f8b700;">⚔️ Solicitações WoW</div>
+                    <div id="wow-pending-list" class="file-list"></div>
+                </div>
+                
+                <div style="margin-top: 30px;">
+                    <div class="section-title" style="color: var(--error);">🚨 Chamados de Suporte (IA)</div>
+                    <div id="tickets-list" class="file-list"></div>
+                </div>
+            </div>
+
+            <div id="dashboard-tickets-section" style="display:none; margin-bottom: 30px;">
+                <div class="section-title">🎫 Meus Tickets Ativos</div>
+                <div id="dashboard-tickets-list" class="file-list"></div>
+            </div>
+
+            <div class="section-title">📂 Meus Arquivos</div>
+            <div id="file-list" class="file-list">
+                <!-- Lista injetada via JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALS -->
+    <div id="upload-modal" class="modal-overlay">
+        <div class="modal-content">
+            <button class="close-modal" onclick="closeModal('upload-modal')">&times;</button>
+            <h2>Upload de Arquivo</h2>
+            <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+                <p>Clique ou arraste arquivos aqui</p>
+                <input type="file" id="file-input" hidden onchange="handleFileUpload(this.files[0])">
+            </div>
+            <p id="upload-status" style="text-align: center; color: var(--text-dim); font-size: 0.9rem;"></p>
+            <!-- Barra de Progresso -->
+            <div id="progress-container" style="display:none; width: 100%; background: rgba(255,255,255,0.1); border-radius: 10px; height: 6px; margin-top: 15px; overflow: hidden;">
+                <div id="progress-bar" style="width: 0%; height: 100%; background: var(--primary); transition: width 0.1s linear; box-shadow: 0 0 10px var(--primary);"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="torrent-modal" class="modal-overlay">
+        <div class="modal-content">
+            <button class="close-modal" onclick="closeModal('torrent-modal')">&times;</button>
+            <h2>Adicionar Torrent</h2>
+            <p style="color: var(--text-dim); margin-bottom: 15px;">Cole o Magnet Link abaixo para iniciar o download no servidor.</p>
+            <input type="text" id="magnet-input" placeholder="magnet:?xt=urn:btih:...">
+            <button class="btn-primary" style="width: 100%" onclick="handleMagnet()">Iniciar Download</button>
+        </div>
+    </div>
+
+    <div id="dolly-modal" class="modal-overlay">
+        <div class="modal-content">
+            <button class="close-modal" onclick="closeModal('dolly-modal')">&times;</button>
+            <h2>Ler Arquivo .dolly</h2>
+            <div class="drop-zone" onclick="document.getElementById('dolly-input').click()">
+                <p>Selecione o arquivo .dolly</p>
+                <input type="file" id="dolly-input" hidden accept=".dolly" onchange="handleDollyRead(this.files[0])">
+            </div>
+        </div>
+    </div>
+
+    <div id="vip-modal" class="modal-overlay">
+        <div class="modal-content" style="border: 1px solid #7f5af0; box-shadow: 0 0 30px rgba(127, 90, 240, 0.2);">
+            <button class="close-modal" onclick="closeModal('vip-modal')">&times;</button>
+            <h2 style="background: linear-gradient(90deg, #7f5af0, #2cb67d); -webkit-background-clip: text; -webkit-text-fill-color: transparent; display: flex; align-items: center; gap: 10px;">👑 SALA VIP <span style="font-size: 0.8rem; color: var(--text-dim); font-weight: normal;">// Conexão Segura</span></h2>
+            
+            <div class="vip-room-container">
+                <div class="vip-chat-area" id="vip-chat-messages">
+                    <p style="text-align: center; color: var(--text-dim); margin-top: 20px;">Conectando ao canal criptografado...</p>
+                </div>
+                <div class="vip-input-area">
+                    <input type="text" id="vip-input" placeholder="Mensagem para a elite..." onkeypress="handleVipKey(event)">
+                    <button onclick="sendVipMessage()">ENVIAR</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="recovery-modal" class="modal-overlay">
+        <div class="modal-content" style="border: 1px solid var(--error);">
+            <button class="close-modal" onclick="closeModal('recovery-modal')">&times;</button>
+            <h2 style="color: var(--error)">🚨 Recuperação de Conta</h2>
+            <p style="color: var(--text-dim); margin-bottom: 15px;">A IA detectou um problema de acesso. Envie os dados diretamente para a administração.</p>
+            <input type="text" id="rec-username" placeholder="Nome da Conta Perdida / Usuário Antigo">
+            <textarea id="rec-proofs" rows="4" style="width:100%; background:var(--surface); border:1px solid rgba(255,255,255,0.1); color:white; border-radius:12px; padding:15px; margin-bottom:15px; resize: vertical;" placeholder="Provas de titularidade: O que aconteceu? Data do último acesso? Detalhes que só você sabe?"></textarea>
+            <button class="btn-primary" style="width: 100%; background: var(--error); box-shadow: 0 4px 15px rgba(239, 69, 101, 0.4);" onclick="submitRecoveryForm()">ENVIAR SOLICITAÇÃO URGENTE</button>
+        </div>
+    </div>
+
+    <div id="vip-buy-modal" class="modal-overlay">
+        <div class="modal-content" style="border: 1px solid var(--success); text-align: center;">
+            <button class="close-modal" onclick="closeModal('vip-buy-modal')">&times;</button>
+            <div class="vip-logo" style="transform: scale(2); margin: 20px 0;">
+                <svg viewBox="0 0 24 24"><path d="M5 16L3 5L8.5 10L12 4L15.5 10L21 5L19 16H5M19 19C19 19.6 18.6 20 18 20H6C5.4 20 5 19.6 5 19V18H19V19Z" /></svg>
+            </div>
+            <h2 style="background: linear-gradient(90deg, #7f5af0, #2cb67d); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 20px;">ADQUIRA O VIP</h2>
+            
+            <div class="vip-comparison">
+                <div class="comp-col">
+                    <h3>Comum</h3>
+                    <p>500MB Upload</p>
+                    <p>Velocidade Normal</p>
+                    <p style="color: var(--text-dim)">Sem Chat</p>
+                </div>
+                <div class="comp-col vip">
+                    <h3>VIP</h3>
+                    <p>1GB Upload</p>
+                    <p>Velocidade Alta</p>
+                    <p>Chat Secreto</p>
+                </div>
+            </div>
+            
+            <div class="comp-price">R$ 2,99</div>
+            
+            <div style="background: rgba(127, 90, 240, 0.1); padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px dashed var(--primary); text-align: center;">
+                <p style="color: var(--text-dim); font-size: 0.8rem; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px;">Chave PIX para Pagamento</p>
+                <div style="display: flex; gap: 8px; align-items: center; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 8px;">
+                    <input type="text" value="8e2dd08f-c741-499a-a7ac-cbddd415f5f7" readonly style="flex: 1; background: transparent; border: none; color: #fff; font-family: monospace; font-size: 0.9rem; text-align: center;">
+                    <button onclick="navigator.clipboard.writeText('8e2dd08f-c741-499a-a7ac-cbddd415f5f7'); showToast('Chave PIX copiada!')" style="background: var(--primary); color: white; border: none; border-radius: 6px; padding: 5px 10px; font-size: 0.8rem; cursor: pointer;">COPIAR</button>
+                </div>
+            </div>
+            
+            <p style="color: var(--error); font-size: 0.8rem; margin-bottom: 20px; border: 1px solid var(--error); padding: 10px; border-radius: 8px; background: rgba(239, 69, 101, 0.1);">
+                ⚠️ <strong>REGRA:</strong> Abrir ticket de VIP sem intenção de compra ou "de brincadeira" resultará em <strong>BANIMENTO IMEDIATO</strong>.
+            </p>
+            
+            <button class="btn-primary" onclick="requestVipPurchase()" style="width: 100%; background: linear-gradient(90deg, #7f5af0, #2cb67d); font-size: 1.2rem;">COMPRAR AGORA</button>
+        </div>
+    </div>
+
+    <!-- MODAL WOW APPLICATION -->
+    <div id="wow-app-modal" class="modal-overlay">
+        <div class="modal-content" style="border: 1px solid #f8b700;">
+            <button class="close-modal" onclick="closeModal('wow-app-modal')">&times;</button>
+            <h2 style="color: #f8b700; text-align: center; margin-bottom: 20px;">⚔️ Alistamento WoW</h2>
+            
+            <div id="wow-form-container">
+                <label style="color:var(--text-dim); font-size:0.9rem;">Você joga no Real (Retail) ou Servidor Privado?</label>
+                <select id="wow-playstyle" style="width:100%; padding:15px; background:var(--surface); border:1px solid rgba(255,255,255,0.1); border-radius:12px; color:white; margin-bottom:15px;">
+                    <option value="Retail">Retail (Blizzard Oficial)</option>
+                    <option value="Private">Servidor Privado</option>
+                </select>
+
+                <input type="text" id="wow-server" placeholder="Qual servidor privado? (Se Retail, digite Oficial)">
+                <input type="text" id="wow-version" placeholder="Qual a versão/expansão? (Ex: 3.3.5a, Dragonflight)">
+                <input type="text" id="wow-nick" placeholder="Qual seu Nick principal?">
+                <input type="text" id="wow-realm" placeholder="Qual o Realm que você joga?">
+
+                <button class="btn-primary" onclick="submitWoWApp()" style="width:100%; background: #f8b700; color: #000;">ENVIAR PARA ANÁLISE</button>
+            </div>
+            <div id="wow-status-msg" style="display:none; text-align:center; padding:20px;"></div>
+        </div>
+    </div>
+
+    <!-- MODAL WOW ROOM (CHAT) -->
+    <div id="wow-room-modal" class="modal-overlay">
+        <div class="modal-content" style="border: 1px solid #f8b700; box-shadow: 0 0 30px rgba(248, 183, 0, 0.2);">
+            <button class="close-modal" onclick="closeModal('wow-room-modal')">&times;</button>
+            <h2 style="color: #f8b700; display: flex; align-items: center; gap: 10px;">⚔️ TAVERNA WOW <span style="font-size: 0.8rem; color: var(--text-dim); font-weight: normal;">// Comunidade</span></h2>
+            
+            <div class="vip-room-container">
+                <div class="vip-chat-area" id="wow-chat-messages" style="border-color: rgba(248, 183, 0, 0.3);">
+                    <p style="text-align: center; color: var(--text-dim); margin-top: 20px;">Entrando na taverna...</p>
+                </div>
+                <div class="vip-input-area">
+                    <input type="text" id="wow-input" placeholder="Fale com a comunidade..." onkeypress="handleWoWKey(event)" style="border-color: rgba(248, 183, 0, 0.3);">
+                    <button onclick="sendWoWMessage()" style="background: #f8b700; color: #000;">ENVIAR</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL WOW PROFILE VIEW -->
+    <div id="wow-profile-modal" class="modal-overlay">
+        <div class="modal-content" style="border: 1px solid #f8b700; text-align: center;">
+            <button class="close-modal" onclick="closeModal('wow-profile-modal')">&times;</button>
+            <h2 style="color: #f8b700; margin-bottom: 5px;">Ficha do Jogador</h2>
+            <p style="color: var(--text-dim); margin-bottom: 20px;">Comunidade World of Warcraft</p>
+            
+            <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 12px; text-align: left;">
+                <p><strong>Estilo:</strong> <span id="view-wow-style"></span></p>
+                <p><strong>Servidor:</strong> <span id="view-wow-server"></span></p>
+                <p><strong>Versão:</strong> <span id="view-wow-version"></span></p>
+                <p><strong>Nick:</strong> <span id="view-wow-nick" style="color: #f8b700;"></span></p>
+                <p><strong>Realm:</strong> <span id="view-wow-realm"></span></p>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script>
+        // --- ESTADO & UTILITÁRIOS ---
+        const API = {
+            login: '/login',
+            register: '/register',
+            files: '/my_files',
+            upload: '/criar_dolly',
+            magnet: '/add_magnet',
+            readDolly: '/ler_dolly',
+            delete: '/delete_file',
+            adminPending: '/admin/pending_users',
+            adminApprove: '/admin/approve',
+            adminTickets: '/admin/tickets',
+            adminReply: '/admin/reply_ticket',
+            adminUsers: '/admin/users',
+            adminUserPass: '/admin/user_pass',
+            adminUserFiles: '/admin/user_files',
+            adminGrantVip: '/admin/grant_vip',
+            adminKick: '/admin/kick_temp',
+            dollyStore: '/dolly_store',
+            session: '/check_session',
+            chatHistory: '/support/history',
+            vipChat: '/vip/chat',
+            requestVip: '/support/request_vip',
+            myTickets: '/support/my_tickets',
+            switchTicket: '/support/switch_ticket',
+            wowApply: '/wow/apply',
+            wowStatus: '/wow/status', // + /user_id
+            adminWoWPending: '/admin/wow_pending',
+            adminWoWAction: '/admin/wow_action',
+            wowChat: '/wow/chat'
+        };
+
+        let currentUserVipStatus = false; // Estado global do VIP para detecção em tempo real
+
+        function showToast(msg, isError = false) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.className = isError ? 'toast show error' : 'toast show';
+            setTimeout(() => t.classList.remove('show'), 3000);
+        }
+
+        function toggleAuth(view) {
+            document.getElementById('login-box').style.display = view === 'login' ? 'block' : 'none';
+            document.getElementById('register-box').style.display = view === 'register' ? 'block' : 'none';
+        }
+
+        function openModal(id) { document.getElementById(id).classList.add('active'); }
+        function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+        // --- LÓGICA DE AUTH ---
+        async function handleLogin(e) {
+            e.preventDefault();
+            const btn = e.target.querySelector('button');
+            const loader = btn.querySelector('.loader');
+            loader.style.display = 'inline-block';
+
+            const user = document.getElementById('login-user').value;
+            const pass = document.getElementById('login-pass').value;
+
+            try {
+                const res = await fetch(API.login, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ username: user, password: pass })
+                });
+                const data = await res.json();
+                
+                if (res.ok) {
+                    document.getElementById('auth-section').style.display = 'none';
+                    document.getElementById('dashboard-section').style.display = 'block';
+                    document.getElementById('user-nav').style.display = 'flex';
+                    document.getElementById('username-display').textContent = user;
+                    
+                    if (data.user.is_vip) {
+                        currentUserVipStatus = true;
+                        document.getElementById('username-display').innerHTML += `
+                            <div class="vip-logo" title="Membro VIP">
+                                <svg viewBox="0 0 24 24"><path d="M5 16L3 5L8.5 10L12 4L15.5 10L21 5L19 16H5M19 19C19 19.6 18.6 20 18 20H6C5.4 20 5 19.6 5 19V18H19V19Z" /></svg>
+                                <span class="vip-text">VIP</span>
+                            </div>`;
+                    } else {
+                        currentUserVipStatus = false;
+                        // Não bloqueia, permite abrir modal de compra
+                    }
+                    // Lógica de Permissão Visual
+                    const userData = data.user;
+                    if (userData.is_admin) {
+                        document.getElementById('admin-section').style.display = 'block';
+                        loadPendingUsers();
+                        loadSupportTickets();
+                        loadAllUsers();
+                        loadWoWPending();
+                    }
+                    
+                    if (!userData.is_approved && !userData.is_admin) {
+                        lockFeature('card-upload');
+                        lockFeature('card-torrent');
+                        showToast('Conta aguardando aprovação. Uploads bloqueados.', true);
+                    }
+
+                    updateQuota(userData);
+                    loadFiles();
+                    loadMyTickets();
+                    startStatusPolling(); // Inicia verificação em tempo real imediatamente
+                } else {
+                    showToast(data.error || 'Erro no login', true);
+                }
+            } catch (err) { showToast('Erro de conexão', true); }
+            loader.style.display = 'none';
+        }
+
+        function updateQuota(user) {
+            const limit = user.is_vip ? 1073741824 : 524288000; // 1GB (VIP) vs 500MB (Normal)
+            const limitLabel = user.is_vip ? '1 GB (VIP)' : '500 MB';
+            const used = user.quota_used || 0;
+            const percent = Math.min(100, (used / limit) * 100).toFixed(1);
+            
+            document.getElementById('quota-limit-label').textContent = limitLabel;
+            document.getElementById('quota-percent').textContent = percent + '%';
+            document.getElementById('quota-bar').style.width = percent + '%';
+            
+            // Muda cor para vermelho se estiver cheio (>90%)
+            const bar = document.getElementById('quota-bar');
+            bar.style.background = percent > 90 ? 'var(--error)' : 'var(--primary)';
+            
+            const usedMB = (used / 1024 / 1024).toFixed(2);
+            document.getElementById('quota-details').textContent = `${usedMB} MB usados`;
+        }
+
+        function lockFeature(elementId, msg = 'Funcionalidade restrita a usuários aprovados.') {
+            const el = document.getElementById(elementId);
+            el.style.opacity = '0.5';
+            el.style.cursor = 'not-allowed';
+            el.onclick = () => showToast(msg, true);
+        }
+
+        async function handleRegister(e) {
+            e.preventDefault();
+            const user = document.getElementById('reg-user').value;
+            const pass = document.getElementById('reg-pass').value;
+
+            try {
+                const res = await fetch(API.register, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ username: user, password: pass })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showToast('Conta criada! Faça login.');
+                    toggleAuth('login');
+                } else {
+                    showToast(data.error, true);
+                }
+            } catch (err) { showToast('Erro ao registrar', true); }
+        }
+
+        function logout() {
+            fetch('/logout');
+            location.reload();
+        }
+
+        // --- ARQUIVOS ---
+        async function loadFiles() {
+            const list = document.getElementById('file-list');
+            list.innerHTML = '<p style="text-align:center; color:var(--text-dim)">Carregando...</p>';
+            
+            try {
+                const res = await fetch(API.files);
+                if (!res.ok) throw new Error();
+                const files = await res.json();
+                
+                list.innerHTML = '';
+                if (files.length === 0) {
+                    list.innerHTML = '<p style="text-align:center; color:var(--text-dim); padding:20px;">Nenhum arquivo encontrado.</p>';
+                    return;
+                }
+
+                files.forEach((f, index) => {
+                    const sizeMB = (f.size_bytes / 1024 / 1024).toFixed(2);
+                    const div = document.createElement('div');
+                    div.className = 'file-item';
+                    div.style.animationDelay = `${index * 0.1}s`;
+                    div.innerHTML = `
+                        <div class="file-info">
+                            <span class="file-name">${f.filename}</span>
+                            <span class="file-meta">${sizeMB} MB • Hash: ${f.hash.substring(0, 8)}...</span>
+                        </div>
+                        <button class="delete-btn" onclick="deleteFile('${f.hash}')">Excluir</button>
+                    `;
+                    list.appendChild(div);
+                });
+            } catch (e) {
+                list.innerHTML = '<p style="text-align:center; color:var(--error)">Erro ao carregar arquivos.</p>';
+            }
+        }
+
+        async function deleteFile(hash) {
+            if(!confirm('Tem certeza?')) return;
+            const res = await fetch(`${API.delete}/${hash}`, { method: 'DELETE' });
+            if (res.ok) {
+                showToast('Arquivo deletado');
+                loadFiles();
+            } else {
+                showToast('Erro ao deletar', true);
+            }
+        }
+
+        // --- ADMIN ---
+        async function loadPendingUsers() {
+            const list = document.getElementById('pending-list');
+            try {
+                const res = await fetch(API.adminPending);
+                const users = await res.json();
+                
+                list.innerHTML = '';
+                if (users.length === 0) {
+                    list.innerHTML = '<p style="color:var(--text-dim)">Nenhum usuário pendente.</p>';
+                    return;
+                }
+
+                users.forEach(u => {
+                    const div = document.createElement('div');
+                    div.className = 'file-item';
+                    div.innerHTML = `
+                        <span class="file-name">${u.username}</span>
+                        <button class="btn-primary" style="padding: 5px 15px; font-size: 0.8rem;" onclick="approveUser(${u.id})">Aprovar</button>
+                        <button class="btn-ghost" style="padding: 5px 15px; font-size: 0.8rem; color: var(--success); border: 1px solid var(--success); margin-left: 5px;" onclick="grantVip(${u.id})">Dar VIP</button>
+                    `;
+                    list.appendChild(div);
+                });
+            } catch (e) { console.error(e); }
+        }
+
+        async function approveUser(id) {
+            await fetch(`${API.adminApprove}/${id}`, { method: 'POST' });
+            showToast('Usuário aprovado!');
+            loadPendingUsers();
+        }
+
+        async function loadAllUsers() {
+            const list = document.getElementById('all-users-list');
+            try {
+                const res = await fetch(API.adminUsers);
+                const users = await res.json();
+                list.innerHTML = '';
+                
+                users.forEach(u => {
+                    let wowBadge = '';
+                    if (u.wow_status === 'APPROVED') {
+                        wowBadge = `<span class="wow-badge" onclick="viewWoWProfile(${u.id})">WoW</span>`;
+                    }
+
+                    const div = document.createElement('div');
+                    div.className = 'file-item';
+                    div.style.flexWrap = 'wrap';
+                    div.innerHTML = `
+                        <div style="flex: 1; min-width: 200px; display: flex; align-items: center;">
+                            <span class="file-name">${u.username} ${u.is_vip ? '💎' : ''} ${u.is_admin ? '🛡️' : ''} ${wowBadge}</span>
+                            <div class="file-meta">ID: ${u.id} • Aprovado: ${u.is_approved ? 'Sim' : 'Não'}</div>
+                        </div>
+                        <div style="display: flex; gap: 5px; flex-wrap: wrap; margin-top: 10px;">
+                            ${!u.is_approved ? `<button class="btn-primary" style="padding:5px 10px; font-size:0.7rem;" onclick="approveUser(${u.id})">Aprovar</button>` : ''}
+                            <button class="btn-ghost" style="padding:5px 10px; font-size:0.7rem; border:1px solid var(--success); color:var(--success);" onclick="grantVip(${u.id})">VIP</button>
+                            <button class="btn-ghost" style="padding:5px 10px; font-size:0.7rem; border:1px solid var(--primary); color:var(--primary);" onclick="checkUserFiles(${u.id}, '${u.username}')">Arqs</button>
+                            <button class="btn-ghost" style="padding:5px 10px; font-size:0.7rem; border:1px solid var(--text-dim); color:var(--text);" onclick="viewUserPass(${u.id})">Ver Senha</button>
+                            <button class="btn-ghost" style="padding:5px 10px; font-size:0.7rem; border:1px solid var(--text-dim); color:var(--text);" onclick="changeUserPass(${u.id})">Alt Senha</button>
+                            ${u.is_banned 
+                                ? `<button class="btn-ghost" style="padding:5px 10px; font-size:0.7rem; border:1px solid var(--success); color:var(--success);" onclick="toggleBan(${u.id}, 'unban')">DESBANIR</button>`
+                                : `<button class="btn-ghost" style="padding:5px 10px; font-size:0.7rem; border:1px solid var(--error); color:var(--error);" onclick="toggleBan(${u.id}, 'ban')">BANIR 🚫</button>`
+                            }
+                            <button class="btn-ghost" style="padding:5px 10px; font-size:0.7rem; border:1px solid orange; color:orange;" onclick="kickUserTemp(${u.id})">CASTIGO ⏳</button>
+                            <button class="delete-btn" style="padding:5px 10px; font-size:0.7rem;" onclick="deleteUser(${u.id})">Excluir</button>
+                        </div>
+                    `;
+                    list.appendChild(div);
+                });
+            } catch(e) {}
+        }
+
+        async function toggleBan(id, action) {
+            const isBan = action === 'ban';
+            if(!confirm(isBan ? "Tem certeza? O usuário será desconectado e verá a animação de banimento." : "Desbanir este usuário?")) return;
+            
+            const endpoint = isBan ? `/admin/ban_user/${id}` : `/admin/unban_user/${id}`;
+            const res = await fetch(endpoint, { method: 'POST' });
+            const data = await res.json();
+            
+            if (res.ok) {
+                showToast(data.message);
+                loadAllUsers();
+            } else {
+                showToast(data.error || 'Erro', true);
+            }
+        }
+
+        async function kickUserTemp(id) {
+            const minutes = prompt("Quantos minutos de castigo?");
+            if (!minutes || isNaN(minutes)) return;
+            
+            const res = await fetch(`${API.adminKick}/${id}`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ minutes: minutes })
+            });
+            const data = await res.json();
+            showToast(data.message || 'Comando enviado.');
+        }
+
+        async function deleteUser(id) {
+            if(!confirm("Tem certeza que deseja EXCLUIR PERMANENTEMENTE este usuário e seus arquivos?")) return;
+            await fetch(`/admin/delete_user/${id}`, { method: 'DELETE' });
+            showToast('Usuário excluído.');
+            loadAllUsers();
+        }
+
+        async function viewUserPass(id) {
+            const res = await fetch(`${API.adminUserPass}/${id}`);
+            const data = await res.json();
+            prompt("Senha do usuário:", data.password);
+        }
+
+        async function changeUserPass(id) {
+            const newPass = prompt("Digite a nova senha:");
+            if(!newPass) return;
+            await fetch(`${API.adminUserPass}/${id}`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ password: newPass })
+            });
+            showToast("Senha alterada.");
+        }
+
+        async function checkUserFiles(id, name) {
+            const res = await fetch(`${API.adminUserFiles}/${id}`);
+            const files = await res.json();
+            let msg = `Arquivos de ${name}:\n`;
+            if(files.length === 0) msg += "Nenhum arquivo.";
+            files.forEach(f => msg += `- ${f.filename} (${(f.size_bytes/1024/1024).toFixed(2)} MB)\n`);
+            alert(msg);
+        }
+
+        async function grantVip(id) {
+            if(!confirm("Dar VIP (30 dias + Aprovação) para este usuário?")) return;
+            const res = await fetch(`${API.adminGrantVip}/${id}`, { method: 'POST' });
+            if (res.ok) {
+                showToast('VIP Concedido!');
+                loadPendingUsers();
+            } else {
+                showToast('Erro ao dar VIP', true);
+            }
+        }
+
+        // --- WOW COMMUNITY LOGIC ---
+        async function checkWoWStatus() {
+            const res = await fetch(API.session);
+            const data = await res.json();
+            if(!data.logged_in) return showToast("Faça login primeiro.", true);
+            
+            const userId = data.user.id;
+            
+            // Verifica status real
+            const statusRes = await fetch(`${API.wowStatus}/${userId}`);
+            const statusData = await statusRes.json();
+            
+            if (statusData.status === 'APPROVED') {
+                // Aprovado: Abre o Chat
+                openWoWRoom();
+            } else if (statusData.status === 'PENDING') {
+                showToast("Sua solicitação está em análise pelo Admin.");
+            } else {
+                // Não tem cadastro: Abre formulário
+                // Se for admin, ele preenche e aprova na hora
+                if (data.user.is_admin) showToast("Admin: Preencha para ativar seu perfil.", false);
+                openModal('wow-app-modal');
+            }
+        }
+
+        async function submitWoWApp() {
+            const data = {
+                play_style: document.getElementById('wow-playstyle').value,
+                server_name: document.getElementById('wow-server').value,
+                version: document.getElementById('wow-version').value,
+                nickname: document.getElementById('wow-nick').value,
+                realm: document.getElementById('wow-realm').value
+            };
+
+            if(!data.server_name || !data.version || !data.nickname || !data.realm) {
+                return showToast("Preencha todos os campos!", true);
+            }
+
+            const res = await fetch(API.wowApply, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            });
+            const json = await res.json();
+            
+            if(res.ok) {
+                document.getElementById('wow-form-container').style.display = 'none';
+                const msg = document.getElementById('wow-status-msg');
+                msg.style.display = 'block';
+                if (json.message.includes("aprovada automaticamente")) {
+                    msg.innerHTML = '<h3 style="color:#f8b700">Aprovado!</h3><p>Bem-vindo à comunidade, Admin.</p><button class="btn-primary" onclick="closeModal(\'wow-app-modal\'); openWoWRoom()" style="margin-top:10px; background:#f8b700; color:black;">ENTRAR NO CHAT</button>';
+                } else {
+                    msg.innerHTML = '<h3 style="color:#f8b700">Aplicação Enviada!</h3><p>O Admin analisará suas informações.</p>';
+                }
+            } else {
+                showToast(json.error, true);
+            }
+        }
+
+        async function loadWoWPending() {
+            const list = document.getElementById('wow-pending-list');
+            const res = await fetch(API.adminWoWPending);
+            if(!res.ok) return;
+            const apps = await res.json();
+            
+            list.innerHTML = '';
+            if(apps.length === 0) { list.innerHTML = '<p style="color:var(--text-dim)">Nenhuma solicitação WoW.</p>'; return; }
+
+            apps.forEach(a => {
+                const div = document.createElement('div');
+                div.className = 'file-item';
+                div.innerHTML = `
+                    <div>
+                        <span class="file-name">${a.username}</span>
+                        <div class="file-meta">${a.play_style} - ${a.server_name} (${a.version})</div>
+                        <div class="file-meta">Nick: ${a.nickname} | Realm: ${a.realm}</div>
+                    </div>
+                    <div>
+                        <button class="btn-primary" style="padding:5px 10px; font-size:0.7rem; background:var(--success);" onclick="wowAction(${a.user_id}, 'APPROVED')">Aceitar</button>
+                        <button class="btn-primary" style="padding:5px 10px; font-size:0.7rem; background:var(--error);" onclick="wowAction(${a.user_id}, 'REJECTED')">Recusar</button>
+                    </div>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        async function wowAction(uid, action) {
+            await fetch(API.adminWoWAction, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ user_id: uid, action: action })
+            });
+            showToast('Status atualizado!');
+            loadWoWPending();
+            loadAllUsers(); // Atualiza lista geral para mostrar badge
+        }
+
+        async function viewWoWProfile(userId) {
+            const res = await fetch(`${API.wowStatus}/${userId}`);
+            const data = await res.json();
+            
+            if(data.status === 'HIDDEN') return showToast("Informação privada ou não aprovada.", true);
+            if(data.status === 'NONE') return showToast("Usuário não faz parte da comunidade.", true);
+            
+            document.getElementById('view-wow-style').textContent = data.play_style;
+            document.getElementById('view-wow-server').textContent = data.server_name;
+            document.getElementById('view-wow-version').textContent = data.version;
+            document.getElementById('view-wow-nick').textContent = data.nickname;
+            document.getElementById('view-wow-realm').textContent = data.realm;
+            
+            openModal('wow-profile-modal');
+        }
+
+        // --- WOW CHAT LOGIC ---
+        let wowPollInterval = null;
+
+        function openWoWRoom() {
+            openModal('wow-room-modal');
+            wowPollInterval = setInterval(pollWoWChat, 2000);
+            pollWoWChat();
+        }
+
+        // Hook no closeModal para limpar intervalo
+        const _superCloseModal = closeModal;
+        closeModal = function(id) {
+            _superCloseModal(id); // Chama a original (que pode ter sido modificada pelo VIP)
+            if (id === 'wow-room-modal') clearInterval(wowPollInterval);
+        }
+
+        async function pollWoWChat() {
+            try {
+                const res = await fetch(API.wowChat);
+                if (!res.ok) return;
+                const msgs = await res.json();
+                
+                const container = document.getElementById('wow-chat-messages');
+                container.innerHTML = '';
+                msgs.forEach(m => {
+                    const div = document.createElement('div');
+                    div.className = 'vip-msg'; // Reusa estilo
+                    // Nome clicável para ver perfil
+                    div.innerHTML = `<strong style="color:#f8b700; cursor:pointer;" onclick="viewWoWProfile(${m.user_id})">${m.username}:</strong> <span>${m.message}</span>`;
+                    container.appendChild(div);
+                });
+            } catch(e) {}
+        }
+
+        async function sendWoWMessage() {
+            const input = document.getElementById('wow-input');
+            const msg = input.value.trim();
+            if (!msg) return;
+            await fetch(API.wowChat, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ message: msg }) });
+            input.value = '';
+            pollWoWChat();
+        }
+        function handleWoWKey(e) { if(e.key === 'Enter') sendWoWMessage(); }
+
+        async function loadSupportTickets() {
+            const list = document.getElementById('tickets-list');
+            try {
+                const res = await fetch(API.adminTickets);
+                if (!res.ok) return;
+                const tickets = await res.json();
+                
+                list.innerHTML = '';
+                if (tickets.length === 0) {
+                    list.innerHTML = '<p style="color:var(--text-dim)">Nenhum chamado urgente.</p>';
+                    return;
+                }
+
+                // Agrupar por sessão para exibição simples
+                const sessions = {};
+                tickets.forEach(t => {
+                    if (!sessions[t.session_id]) sessions[t.session_id] = [];
+                    sessions[t.session_id].push(t);
+                });
+
+                Object.keys(sessions).forEach(sid => {
+                    const msgs = sessions[sid];
+                    const lastMsg = msgs[0]; // Ordenado DESC no backend
+                    const isVipRequest = msgs.some(m => m.message.includes('[VIP REQUEST]'));
+                    const userId = lastMsg.user_id; // Pego da query atualizada
+
+                    const div = document.createElement('div');
+                    div.className = 'file-item';
+                    div.style.borderLeft = isVipRequest ? '4px solid var(--success)' : '4px solid var(--error)';
+                    let actionButtons = `<button class="btn-ghost" style="margin-top:5px; padding:5px; font-size:0.8rem; width:100%; border:1px solid var(--primary);" onclick="replyTicket('${sid}')">Responder</button>`;
+                    
+                    if (isVipRequest) {
+                        actionButtons = `
+                            <div style="display:flex; gap:5px; margin-top:5px;">
+                                <button class="btn-primary" style="flex:1; background:var(--success); font-size:0.8rem;" onclick="adminDeliverVip(${userId}, '${sid}')">✅ ENTREGUE</button>
+                                <button class="btn-primary" style="flex:1; background:var(--error); font-size:0.8rem;" onclick="adminBanVipWaster(${userId})">🚫 BANIR</button>
+                            </div>
+                            <button class="btn-ghost" style="margin-top:5px; padding:5px; font-size:0.8rem; width:100%; border:1px solid var(--text-dim);" onclick="replyTicket('${sid}')">Responder Manualmente</button>
+                        `;
+                    }
+
+                    div.innerHTML = `
+                        <div style="width:100%">
+                            <div style="font-weight:bold; margin-bottom:5px;">${isVipRequest ? '💎 SOLICITAÇÃO VIP' : '🚨 SUPORTE'} - ${lastMsg.username || 'Anônimo'}</div>
+                            <div style="font-size:0.85rem; color:var(--text-dim); max-height:100px; overflow-y:auto; background:rgba(0,0,0,0.2); padding:10px; border-radius:8px;">
+                                ${msgs.map(m => `<strong>${m.sender.toUpperCase()}:</strong> ${m.message}`).reverse().join('<br>')}
+                            </div>
+                            ${actionButtons}
+                        </div>
+                    `;
+                    list.appendChild(div);
+                });
+            } catch (e) { console.error(e); }
+        }
+
+        async function replyTicket(sessionId) {
+            const msg = prompt("Digite a resposta do Admin:");
+            if (!msg) return;
+            await fetch(API.adminReply, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ session_id: sessionId, message: msg })
+            });
+            showToast("Resposta enviada.");
+            loadSupportTickets();
+        }
+
+        async function adminDeliverVip(userId, sessionId) {
+            if(!confirm("Confirmar pagamento e entregar VIP?")) return;
+            // Dá o VIP
+            await fetch(`${API.adminGrantVip}/${userId}`, { method: 'POST' });
+            // Responde o ticket
+            await fetch(API.adminReply, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ session_id: sessionId, message: "Pagamento confirmado! VIP Entregue. Aproveite!" }) });
+            showToast("VIP Entregue!");
+            loadSupportTickets();
+        }
+
+        async function adminBanVipWaster(userId) {
+            if(!confirm("BANIR usuário por ticket falso?")) return;
+            await fetch(`/admin/ban_user/${userId}`, { method: 'POST' });
+            showToast("Usuário Banido.");
+            loadSupportTickets(); // Atualiza lista
+        }
+
+        // --- DOLLY STORE (DASHBOARD GLOBAL) ---
+        async function openDollyStore() {
+            // Reutiliza o modal de lista ou cria um novo. Vamos usar um modal grande.
+            // Para simplificar, vamos injetar no modal 'dolly-modal' ou criar um novo 'store-modal'
+            // Vamos criar o HTML do modal dinamicamente ou usar um existente.
+            // Vou criar um modal específico para a Store no HTML via JS para não poluir muito o DOM inicial
+            
+            let modal = document.getElementById('store-modal');
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'store-modal';
+                modal.className = 'modal-overlay';
+                modal.innerHTML = `
+                    <div class="modal-content" style="max-width: 800px; height: 80vh; display: flex; flex-direction: column;">
+                        <button class="close-modal" onclick="closeModal('store-modal')">&times;</button>
+                        <h2>🌐 Dolly Store (Rede Global)</h2>
+                        <div id="store-list" class="file-list" style="overflow-y: auto; flex: 1; margin-top: 20px;">
+                            <p style="text-align:center">Carregando rede...</p>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+            }
+            
+            openModal('store-modal');
+            const list = document.getElementById('store-list');
+            
+            try {
+                const res = await fetch(API.dollyStore);
+                const files = await res.json();
+                list.innerHTML = '';
+                
+                files.forEach(f => {
+                    let tagClass = 'tag-sus';
+                    if (f.ai_status === 'CRIADO PELA ADMINISTRAÇÃO') tagClass = 'tag-admin';
+                    else if (f.ai_status === 'CONFIAVEL') tagClass = 'tag-trusted';
+                    else if (f.ai_status === 'VIRUS') tagClass = 'tag-virus';
+                    
+                    let wowBadge = '';
+                    if (f.wow_status === 'APPROVED') {
+                        wowBadge = `<span class="wow-badge" onclick="viewWoWProfile(${f.owner_id})" title="Ver Ficha WoW">WoW</span>`;
+                    }
+
+                    const div = document.createElement('div');
+                    div.className = 'file-item';
+                    div.innerHTML = `
+                        <div class="file-info">
+                            <span class="file-name">${f.filename} <span class="ai-tag ${tagClass}">${f.ai_status}</span></span>
+                            <span class="file-meta">Por: ${f.username} ${f.is_vip ? '💎' : ''} ${wowBadge} • ${(f.size_bytes/1024/1024).toFixed(2)} MB</span>
+                        </div>
+                    `;
+                    list.appendChild(div);
+                });
+            } catch(e) { list.innerHTML = '<p>Erro ao carregar store.</p>'; }
+        }
+
+        // --- UPLOAD & TORRENT ---
+        function handleFileUpload(file) {
+            if (!file) return;
+            
+            const status = document.getElementById('upload-status');
+            const progressContainer = document.getElementById('progress-container');
+            const progressBar = document.getElementById('progress-bar');
+            
+            status.textContent = `Preparando ${file.name}...`;
+            status.style.color = 'var(--text-dim)';
+            progressContainer.style.display = 'block';
+            progressBar.style.width = '0%';
+            
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', API.upload, true);
+            xhr.responseType = 'blob'; // Importante para receber o arquivo .dolly
+
+            // Evento de Progresso
+            xhr.upload.onprogress = function(e) {
+                if (e.lengthComputable) {
+                    const percent = (e.loaded / e.total) * 100;
+                    progressBar.style.width = percent + '%';
+                    
+                    if (percent < 100) {
+                        status.textContent = `Enviando: ${Math.round(percent)}%`;
+                    } else {
+                        status.textContent = 'Processando no servidor (Salvando no Banco)...';
+                    }
+                }
+            };
+
+            // Evento de Conclusão
+            xhr.onload = async function() {
+                if (xhr.status === 200) {
+                    // Sucesso: Baixar o .dolly
+                    const blob = xhr.response;
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = file.name + ".dolly";
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    
+                    showToast('Upload concluído! .dolly baixado.');
+                    closeModal('upload-modal');
+                    loadFiles();
+                    
+                    // Reset
+                    setTimeout(() => {
+                        progressContainer.style.display = 'none';
+                        status.textContent = '';
+                    }, 1000);
+                } else {
+                    // Erro: Ler o JSON do blob
+                    const text = await xhr.response.text();
+                    try {
+                        const err = JSON.parse(text);
+                        showToast(err.error || 'Erro no upload', true);
+                        status.textContent = 'Erro: ' + (err.error || 'Falha no upload');
+                        status.style.color = 'var(--error)';
+                    } catch (e) {
+                        showToast('Erro desconhecido', true);
+                    }
+                }
+            };
+
+            xhr.onerror = function() {
+                showToast('Erro de conexão', true);
+                status.textContent = 'Falha na conexão.';
+                status.style.color = 'var(--error)';
+            };
+
+            xhr.send(formData);
+        }
+
+        async function handleMagnet() {
+            const link = document.getElementById('magnet-input').value;
+            if (!link) return;
+            
+            const res = await fetch(API.magnet, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ magnet_link: link })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                showToast('Download iniciado em background!');
+                closeModal('torrent-modal');
+            } else {
+                showToast(data.error, true);
+            }
+        }
+
+        async function handleDollyRead(file) {
+            if (!file) return;
+            const formData = new FormData();
+            formData.append('dolly_file', file);
+            
+            const res = await fetch(API.readDolly, { method: 'POST', body: formData });
+            const data = await res.json();
+            
+            if (res.ok) {
+                closeModal('dolly-modal');
+                if(confirm(`Arquivo encontrado: ${data.file_info.original_name}\nDeseja baixar o conteúdo real?`)) {
+                    window.location.href = data.download_url;
+                }
+            } else {
+                showToast(data.error, true);
+            }
+        }
+
+        // Drag and Drop visual
+        const dz = document.getElementById('drop-zone');
+        dz.addEventListener('dragover', (e) => { e.preventDefault(); dz.classList.add('dragover'); });
+        dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+        dz.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dz.classList.remove('dragover');
+            handleFileUpload(e.dataTransfer.files[0]);
+        });
+
+        // --- INTRO LOGIC ---
+        function acceptTerms() {
+            const terms = document.getElementById('terms-screen');
+            terms.style.opacity = '0';
+            setTimeout(() => {
+                terms.remove();
+                startIntroAnimation();
+            }, 500);
+        }
+
+        function startIntroAnimation() {
+            const container = document.getElementById('shapes-container');
+            let count = 0;
+            
+            // Função para adicionar formas gradualmente
+            const addShape = () => {
+                const shape = document.createElement('div');
+                shape.className = 'loader-shape';
+                // Injeta o SVG do símbolo
+                shape.innerHTML = `<svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M20 2L4.4 11V29L20 38L35.6 29V11L20 2Z" fill="rgba(127, 90, 240, 0.15)" stroke="#7f5af0" stroke-width="2" stroke-linejoin="round"/>
+                    <path d="M22 10L13 21H21L17 31" stroke="#fffffe" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>`;
+                if (count === 4) shape.id = 'survivor-shape'; // O 5º elemento (índice 4) será o sobrevivente
+                // Removido delay negativo para permitir a animação de entrada "Pop" funcionar corretamente
+                shape.style.animationDelay = `${count * 0.2}s`; // Sequencial
+                container.appendChild(shape);
+                count++;
+            };
+            addShape(); // Adiciona a primeira
+
+            const interval = setInterval(() => {
+                if (count >= 5) {
+                    clearInterval(interval);
+                    // Espera um pouco com as 5 formas e explode
+                    const screen = document.getElementById('intro-screen');
+                    screen.classList.add('shake-effect'); // Treme a tela antes de explodir
+                    setTimeout(() => {
+                        screen.classList.remove('shake-effect');
+                        screen.classList.add('forming-title');
+                        
+                        // Lógica do Sobrevivente (Log de Atualização)
+                        const survivor = document.getElementById('survivor-shape');
+                        
+                        setTimeout(() => {
+                            // Vai para o lugar final (Ao lado do título)
+                            survivor.style.left = ''; // Limpa estilos inline para o CSS da classe assumir
+                            survivor.style.top = '';
+                            screen.classList.add('move-survivor');
+                            
+                            setTimeout(() => {
+                                survivor.innerHTML = `
+                                    <div class="log-content" style="opacity: 0; transition: opacity 0.5s;">
+                                        <div style="font-weight: 600; color: var(--primary); margin-bottom: 10px; font-size: 1.1rem;">Novidades v2.2</div>
+                                        <div style="color: var(--text-dim); margin-bottom: 5px;">• Sistema VIP & Chat Elite</div>
+                                        <div style="color: var(--text-dim); margin-bottom: 5px;">• IA Groq Integrada</div>
+                                        <div style="color: var(--text-dim); margin-bottom: 5px;">• Ban/Kick em Tempo Real</div>
+                                        <div style="color: var(--text-dim);">• Recuperação de Conta</div>
+                                    </div>
+                                `;
+                                requestAnimationFrame(() => survivor.querySelector('.log-content').style.opacity = '1');
+                            }, 500); // Tempo para a desintegração visual acontecer
+                        }, 100); // Inicia movimento logo após a explosão dos outros
+                    }, 800);
+                } else {
+                    if (count === 3) {
+                        document.getElementById('intro-screen').style.backgroundColor = 'var(--bg)';
+                    }
+                    addShape();
+                }
+            }, 800);
+        }
+
+        async function enterSite() {
+            const btn = document.querySelector('#intro-end button');
+            const originalText = btn.textContent;
+            
+            // Estilo de carregamento
+            btn.disabled = true;
+            btn.style.opacity = '0.8';
+            btn.style.cursor = 'wait';
+            
+            const steps = [
+                { msg: "Verificando rede...", check: () => navigator.onLine },
+                { msg: "Carregando módulos...", check: () => document.readyState !== 'loading' },
+                { msg: "Conectando ao banco...", check: async () => {
+                    try {
+                        const res = await fetch('/status');
+                        return res.ok;
+                    } catch { return false; }
+                }}
+            ];
+
+            for (const step of steps) {
+                btn.innerHTML = `${step.msg} <div class="loader" style="display:inline-block"></div>`;
+                // Pequeno delay artificial para o usuário ver o que está acontecendo
+                await new Promise(r => setTimeout(r, 600));
+                
+                const result = await step.check();
+                if (!result) {
+                    btn.innerHTML = "❌ Falha: " + step.msg.replace('Verificando ', '').replace('Conectando ao ', '');
+                    btn.style.color = 'var(--error)';
+                    showToast("Erro na verificação do sistema!", true);
+                    setTimeout(() => {
+                        btn.textContent = originalText;
+                        btn.disabled = false;
+                        btn.style.opacity = '1';
+                        btn.style.color = '#fff';
+                        btn.style.cursor = 'pointer';
+                    }, 2000);
+                    return;
+                }
+            }
+
+            // Verifica sessão silenciosamente antes de liberar
+            let sessionData = null;
+            try {
+                const res = await fetch(API.session);
+                if (res.ok) sessionData = await res.json();
+            } catch (e) {}
+
+            btn.textContent = "ACESSO AUTORIZADO";
+            btn.style.color = 'var(--success)';
+            
+            setTimeout(() => {
+                // Flash Effect
+                const flash = document.getElementById('flash-overlay');
+                flash.style.opacity = '1';
+                
+                const screen = document.getElementById('intro-screen');
+                
+                setTimeout(() => {
+                    // Se já estiver logado, configura a interface e pula o login
+                    if (sessionData && sessionData.logged_in) {
+                        document.getElementById('auth-section').style.display = 'none';
+                        document.getElementById('dashboard-section').style.display = 'block';
+                        document.getElementById('user-nav').style.display = 'flex';
+                        document.getElementById('username-display').textContent = sessionData.user.username;
+                        
+                        if (sessionData.user.is_vip) {
+                            currentUserVipStatus = true;
+                            document.getElementById('username-display').innerHTML += `
+                                <div class="vip-logo" title="Membro VIP">
+                                    <svg viewBox="0 0 24 24"><path d="M5 16L3 5L8.5 10L12 4L15.5 10L21 5L19 16H5M19 19C19 19.6 18.6 20 18 20H6C5.4 20 5 19.6 5 19V18H19V19Z" /></svg>
+                                    <span class="vip-text">VIP</span>
+                                </div>`;
+                        } else {
+                            currentUserVipStatus = false;
+                            // Não bloqueia, permite abrir modal de compra
+                        }
+
+                        const u = sessionData.user;
+                        if (u.is_admin) {
+                            document.getElementById('admin-section').style.display = 'block';
+                            loadPendingUsers();
+                        }
+                        if (!u.is_approved && !u.is_admin) {
+                            lockFeature('card-upload');
+                            lockFeature('card-torrent');
+                        }
+                        updateQuota(u);
+                        loadFiles();
+                        loadMyTickets(); // Carrega tickets ao logar
+                        
+                        // Inicia verificação constante de status (Kick/Ban em tempo real)
+                        startStatusPolling();
+                    }
+
+                    screen.remove();
+                    flash.style.opacity = '0'; // Fade out flash revealing the site
+                    document.body.classList.add('site-entered');
+                }, 600);
+            }, 500);
+        }
+
+        // --- AUTO LOGIN (SKIP INTRO) ---
+        window.addEventListener('load', async () => {
+            try {
+                const res = await fetch(API.session);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.logged_in) {
+                        // Remove telas de intro e termos
+                        const terms = document.getElementById('terms-screen');
+                        const intro = document.getElementById('intro-screen');
+                        if (terms) terms.remove();
+                        if (intro) intro.remove();
+                        
+                        document.body.classList.add('site-entered');
+
+                        // Configura Dashboard
+                        document.getElementById('auth-section').style.display = 'none';
+                        document.getElementById('dashboard-section').style.display = 'block';
+                        document.getElementById('user-nav').style.display = 'flex';
+                        document.getElementById('username-display').textContent = data.user.username;
+                        
+                        if (data.user.is_vip) {
+                            currentUserVipStatus = true;
+                            document.getElementById('username-display').innerHTML += `
+                                <div class="vip-logo" title="Membro VIP">
+                                    <svg viewBox="0 0 24 24"><path d="M5 16L3 5L8.5 10L12 4L15.5 10L21 5L19 16H5M19 19C19 19.6 18.6 20 18 20H6C5.4 20 5 19.6 5 19V18H19V19Z" /></svg>
+                                    <span class="vip-text">VIP</span>
+                                </div>`;
+                        } else {
+                            currentUserVipStatus = false;
+                            // Não bloqueia
+                        }
+
+                        const u = data.user;
+                        if (u.is_admin) {
+                            document.getElementById('admin-section').style.display = 'block';
+                            loadPendingUsers();
+                            loadSupportTickets();
+                            loadAllUsers();
+                            loadWoWPending();
+                        }
+                        if (!u.is_approved && !u.is_admin) {
+                            lockFeature('card-upload');
+                            lockFeature('card-torrent');
+                        }
+                        updateQuota(u);
+                        loadFiles();
+                        loadMyTickets(); // Carrega tickets no auto-login
+
+                        // Inicia verificação constante de status
+                        startStatusPolling();
+                    }
+                }
+            } catch (e) {}
+        });
+
+        // --- TICKET MANAGEMENT ---
+        async function toggleTicketList() {
+            const listView = document.getElementById('ticket-list-view');
+            const chatView = document.getElementById('chat-messages');
+            const inputArea = document.querySelector('.support-input');
+            
+            if (listView.style.display === 'none') {
+                // Show List
+                listView.style.display = 'block';
+                chatView.style.display = 'none';
+                inputArea.style.display = 'none';
+                await loadMyTickets();
+            } else {
+                // Show Chat
+                listView.style.display = 'none';
+                chatView.style.display = 'flex';
+                inputArea.style.display = 'flex';
+            }
+        }
+
+        async function loadMyTickets() {
+            const list = document.getElementById('ticket-list-view');
+            const dashList = document.getElementById('dashboard-tickets-list');
+            const dashSection = document.getElementById('dashboard-tickets-section');
+            
+            // Loader apenas na lista do widget se estiver visível
+            if(list.style.display !== 'none') list.innerHTML = '<div class="loader" style="display:block; margin:20px auto;"></div>';
+            
+            try {
+                const res = await fetch(API.myTickets);
+                if (!res.ok) throw new Error();
+                const tickets = await res.json();
+                
+                list.innerHTML = '';
+                if (dashList) dashList.innerHTML = '';
+                
+                if (tickets.length === 0) {
+                    list.innerHTML = '<p style="text-align:center; color:var(--text-dim); margin-top:20px;">Nenhum ticket encontrado.</p>';
+                    if (dashSection) dashSection.style.display = 'none';
+                    return;
+                }
+                
+                if (dashSection) dashSection.style.display = 'block';
+                
+                tickets.forEach(t => {
+                    const div = document.createElement('div');
+                    div.className = 'file-item';
+                    div.style.marginBottom = '8px';
+                    div.style.cursor = 'pointer';
+                    div.style.border = t.is_active ? '1px solid var(--primary)' : '1px solid transparent';
+                    div.style.background = t.is_active ? 'rgba(127, 90, 240, 0.1)' : 'var(--surface)';
+                    div.onclick = () => switchTicket(t.session_id);
+                    
+                    const date = new Date(t.last_update).toLocaleDateString();
+                    const isVip = t.session_id.includes('vip');
+                    
+                    div.innerHTML = `
+                        <div style="width:100%">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <span style="font-weight:bold; font-size:0.8rem; color:${isVip ? 'var(--success)' : 'var(--text)'}">
+                                    ${isVip ? '💎 VIP REQUEST' : '🎫 SUPORTE'}
+                                </span>
+                                <span style="font-size:0.7rem; color:var(--text-dim)">${date}</span>
+                            </div>
+                            <div style="font-size:0.7rem; color:var(--text-dim); margin-top:4px;">ID: ${t.session_id.substring(0,12)}...</div>
+                        </div>
+                    `;
+                    list.appendChild(div);
+
+                    // Clone para o Dashboard
+                    if (dashList) {
+                        const dashDiv = div.cloneNode(true);
+                        dashDiv.onclick = () => { 
+                            switchTicket(t.session_id); 
+                            if(!document.getElementById('support-window').classList.contains('active')) toggleSupport();
+                        };
+                        dashList.appendChild(dashDiv);
+                    }
+                });
+            } catch (e) {
+                list.innerHTML = '<p style="text-align:center; color:var(--error)">Erro ao carregar tickets.</p>';
+            }
+        }
+
+        async function switchTicket(sid) {
+            await fetch(API.switchTicket, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ session_id: sid })
+            });
+            
+            // Força a visualização do Chat (sai da lista)
+            document.getElementById('ticket-list-view').style.display = 'none';
+            document.getElementById('chat-messages').style.display = 'flex';
+            document.querySelector('.support-input').style.display = 'flex';
+            
+            pollChat(); // Refresh chat content
+            loadMyTickets(); // Refresh highlights
+        }
+
+        // --- SUPPORT CHAT ---
+        let chatPollInterval = null;
+
+        function toggleSupport() {
+            const win = document.getElementById('support-window');
+            win.classList.toggle('active');
+            if(win.classList.contains('active')) {
+                document.getElementById('chat-input').focus();
+                pollChat();
+                chatPollInterval = setInterval(pollChat, 3000);
+            } else {
+                clearInterval(chatPollInterval);
+            }
+        }
+
+        async function sendChatMessage() {
+            const input = document.getElementById('chat-input');
+            const msg = input.value.trim();
+            if (!msg) return;
+            
+            // Add User Message
+            addMessage(msg, 'user');
+            input.value = '';
+            
+            // Simulate thinking
+            const thinkingId = addMessage('Processando...', 'bot', true);
+            
+            try {
+                const res = await fetch('/support/chat', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ message: msg })
+                });
+                const data = await res.json();
+                
+                // Remove thinking and add response
+                document.getElementById(thinkingId).remove();
+                addMessage(data.response, 'bot');
+
+                // Lógica de Recuperação de Conta (Acionado pela IA)
+                if (data.trigger_recovery) {
+                    openModal('recovery-modal');
+                }
+
+                // Efeito de Acesso Negado (Se a IA responder com a frase chave)
+                if (data.response.includes("ACESSO NEGADO") || data.response.includes("ACCESS DENIED")) {
+                    const flash = document.createElement('div');
+                    flash.className = 'access-denied-flash';
+                    document.body.appendChild(flash);
+                    setTimeout(() => flash.remove(), 500);
+                    // Treme a janela do chat
+                    document.getElementById('support-window').classList.add('shake-effect');
+                    setTimeout(() => document.getElementById('support-window').classList.remove('shake-effect'), 500);
+                }
+            } catch (e) {
+                document.getElementById(thinkingId).remove();
+                addMessage('Erro de conexão com o núcleo da IA.', 'bot');
+            }
+        }
+
+        async function pollChat() {
+            try {
+                const res = await fetch(API.chatHistory);
+                if (!res.ok) return;
+                const msgs = await res.json();
+                
+                const container = document.getElementById('chat-messages');
+                container.innerHTML = ''; // Limpa e redesenha (simples)
+                
+                msgs.forEach(m => {
+                    const type = m.sender === 'user' ? 'user' : 'bot'; // Admin aparece como bot visualmente ou podemos criar estilo 'admin'
+                    const div = document.createElement('div');
+                    div.className = `message ${type}`;
+                    if (m.sender === 'admin') div.style.border = '1px solid var(--primary)'; // Destaque admin
+                    div.textContent = (m.sender === 'admin' ? '[ADMIN]: ' : '') + m.message;
+                    container.appendChild(div);
+                });
+                container.scrollTop = container.scrollHeight;
+            } catch(e) {}
+        }
+
+        function addMessage(text, type, isThinking = false) {
+            const div = document.createElement('div');
+            div.className = `message ${type}`;
+            div.textContent = text;
+            if (isThinking) {
+                div.id = 'thinking-' + Date.now();
+                div.style.opacity = '0.7';
+                div.style.fontStyle = 'italic';
+            }
+            const container = document.getElementById('chat-messages');
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+            return div.id;
+        }
+
+        async function submitRecoveryForm() {
+            const user = document.getElementById('rec-username').value;
+            const proofs = document.getElementById('rec-proofs').value;
+            
+            if(!user || !proofs) return showToast('Por favor, preencha todos os campos.', true);
+            
+            const res = await fetch('/support/submit_recovery', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ username: user, proofs: proofs })
+            });
+            
+            if(res.ok) {
+                showToast('Solicitação enviada! O Admin analisará em breve.');
+                closeModal('recovery-modal');
+                addMessage('Sistema: Protocolo de recuperação iniciado. Aguarde contato.', 'bot');
+            } else {
+                showToast('Erro ao enviar solicitação.', true);
+            }
+        }
+
+        // --- SALA VIP LOGIC ---
+        let vipPollInterval = null;
+
+        function openVipRoom() {
+            // Se não for VIP, abre o modal de compra
+            if (!currentUserVipStatus) {
+                openModal('vip-buy-modal');
+                return;
+            }
+            
+            openModal('vip-modal');
+            vipPollInterval = setInterval(pollVipChat, 2000);
+        }
+
+        async function requestVipPurchase() {
+            const res = await fetch(API.requestVip, { method: 'POST' });
+            const data = await res.json();
+            closeModal('vip-buy-modal');
+            showToast(data.message);
+            
+            // Abre o chat automaticamente no novo ticket
+            const win = document.getElementById('support-window');
+            if (!win.classList.contains('active')) toggleSupport();
+            
+            // Garante que está na view de chat
+            document.getElementById('ticket-list-view').style.display = 'none';
+            document.getElementById('chat-messages').style.display = 'flex';
+            document.querySelector('.support-input').style.display = 'flex';
+            
+            pollChat();
+            loadMyTickets();
+        }
+
+        // Sobrescreve o closeModal padrão para limpar o intervalo VIP
+        const originalCloseModal = closeModal;
+        closeModal = function(id) {
+            originalCloseModal(id);
+            if (id === 'vip-modal') clearInterval(vipPollInterval);
+        }
+
+        async function pollVipChat() {
+            try {
+                const res = await fetch(API.vipChat);
+                if (!res.ok) return; // Provavelmente não é VIP
+                const msgs = await res.json();
+                
+                const container = document.getElementById('vip-chat-messages');
+                container.innerHTML = '';
+                msgs.forEach(m => {
+                    const div = document.createElement('div');
+                    div.className = 'vip-msg';
+                    div.innerHTML = `<strong>${m.username}:</strong> <span>${m.message}</span>`;
+                    container.appendChild(div);
+                });
+            } catch(e) {}
+        }
+
+        async function sendVipMessage() {
+            const input = document.getElementById('vip-input');
+            const msg = input.value.trim();
+            if (!msg) return;
+            
+            await fetch(API.vipChat, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ message: msg }) });
+            input.value = '';
+            pollVipChat();
+        }
+        function handleVipKey(e) { if(e.key === 'Enter') sendVipMessage(); }
+
+        // --- VIP ANIMATION LOGIC ---
+        function playVipAnimation() {
+            const screen = document.getElementById('vip-celebration');
+            const ball = document.getElementById('vip-ball');
+            const cut = document.getElementById('vip-cut');
+            const explosion = document.getElementById('vip-explosion');
+            const container = document.getElementById('vip-text-container');
+            const v = document.getElementById('vip-v');
+            const i = document.getElementById('vip-i');
+            const p = document.getElementById('vip-p');
+            const benefits = document.querySelectorAll('.benefit-item-construct');
+            
+            screen.style.display = 'flex';
+            
+            // 0s: Bola aparece e se molda
+            ball.classList.add('active');
+
+            // 2s: Bola some, V aparece
+            setTimeout(() => {
+                v.classList.add('v-show');
+            }, 2000);
+
+            // 3s: Efeito de Corte -> I aparece
+            setTimeout(() => {
+                cut.classList.add('active');
+                i.classList.add('i-show');
+            }, 3000);
+
+            // 4s: Explosão -> P aparece
+            setTimeout(() => {
+                explosion.classList.add('active');
+                p.classList.add('p-show');
+            }, 4000);
+
+            // 5s: Glow Final
+            setTimeout(() => {
+                container.classList.add('final-glow');
+            }, 5000);
+
+            // 6s - 9s: Benefícios construtivos (um por segundo)
+            benefits.forEach((b, index) => {
+                setTimeout(() => {
+                    b.classList.add('show');
+                }, 6000 + (index * 800));
+            });
+
+            // 10s: Fim
+            setTimeout(() => { screen.style.opacity = '0'; screen.style.transition = 'opacity 1s'; }, 9500);
+            setTimeout(() => { screen.style.display = 'none'; location.reload(); }, 10500);
+        }
+
+        // --- POLLING DE STATUS (REAL-TIME KICK) ---
+        let statusInterval = null;
+        function startStatusPolling() {
+            if (statusInterval) return; // Evita duplicar o timer se chamado múltiplas vezes
+            statusInterval = setInterval(async () => {
+                try {
+                    // Adiciona timestamp para evitar cache e reduz intervalo para 1s
+                    const res = await fetch(API.session + '?_=' + Date.now());
+                    const data = await res.json();
+                    
+                    const kickScreen = document.getElementById('kick-screen');
+                    
+                    if (data.kicked) {
+                        // Ativa tela de castigo
+                        kickScreen.style.display = 'flex';
+                        
+                        // Formata o tempo
+                        const totalSeconds = Math.floor(data.remaining);
+                        if (totalSeconds <= 0) {
+                            kickScreen.style.display = 'none'; // Liberado
+                        } else {
+                            const m = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
+                            const s = (totalSeconds % 60).toString().padStart(2, '0');
+                            document.getElementById('kick-timer-display').textContent = `${m}:${s}`;
+                        }
+                    } else {
+                        kickScreen.style.display = 'none';
+                    }
+
+                    if (data.banned) {
+                        // Mostra a tela de banimento imediatamente (sem recarregar)
+                        document.getElementById('ban-screen').style.display = 'flex';
+                    }
+
+                    if (data.deleted) {
+                        alert("CONTA EXCLUÍDA: Você foi removido do sistema pelo administrador.");
+                        window.location.href = '/'; // Redireciona para o início
+                    }
+
+                    // Verifica se ganhou VIP em tempo real
+                    if (data.user) {
+                        if (!currentUserVipStatus && data.user.is_vip) {
+                            // Ganhou VIP agora!
+                            playVipAnimation();
+                        }
+                        if (currentUserVipStatus !== data.user.is_vip) updateQuota(data.user); // Atualiza barra se status mudar
+                        currentUserVipStatus = data.user.is_vip;
+                    }
+                    
+                } catch(e) {}
+            }, 1000); // Verifica a cada 1 segundo (Tempo Real)
+        }
+
+        function handleChatKey(e) {
+            if (e.key === 'Enter') sendChatMessage();
+        }
+    </script>
+</body>
+</html>
